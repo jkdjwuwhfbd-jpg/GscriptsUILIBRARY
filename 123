@@ -1,0 +1,403 @@
+local lib = {}
+lib.__index = lib
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "gscripts"
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.DisplayOrder = 999
+gui.IgnoreGuiInset = true
+
+if syn and syn.protect_gui then
+	syn.protect_gui(gui)
+	gui.Parent = game.CoreGui
+elseif gethui then
+	gui.Parent = gethui()
+else
+	gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local function tw(obj, props, t)
+	TweenService:Create(obj, TweenInfo.new(t or 0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), props):Play()
+end
+
+local function isPress(i)
+	return i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch
+end
+
+local function isMoved(i)
+	return i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch
+end
+
+local function draggable(frame, grip)
+	local down, startInput, startPos
+
+	grip.InputBegan:Connect(function(i)
+		if isPress(i) then
+			down = true
+			startInput = i.Position
+			startPos = frame.Position
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(i)
+		if down and isMoved(i) then
+			local d = i.Position - startInput
+			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(i)
+		if isPress(i) then down = false end
+	end)
+end
+
+function lib.new(name)
+	local self = setmetatable({}, lib)
+	self._y = 8
+	self._open = false
+	self._height = 0
+
+	local win = Instance.new("Frame")
+	win.Size = UDim2.new(0, 200, 0, 40)
+	win.Position = UDim2.new(0.5, -100, 0.05, 0)
+	win.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	win.BorderSizePixel = 0
+	win.ClipsDescendants = true
+	win.Parent = gui
+
+	Instance.new("UICorner", win).CornerRadius = UDim.new(0, 10)
+
+	local top = Instance.new("Frame")
+	top.Size = UDim2.new(1, 0, 0, 40)
+	top.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	top.BorderSizePixel = 0
+	top.ZIndex = 2
+	top.Parent = win
+
+	Instance.new("UICorner", top).CornerRadius = UDim.new(0, 10)
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -40, 1, 0)
+	title.Position = UDim2.new(0, 12, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = name or "gscripts"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextSize = 14
+	title.Font = Enum.Font.GothamBold
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.ZIndex = 3
+	title.Parent = top
+
+	local arrow = Instance.new("TextLabel")
+	arrow.Size = UDim2.new(0, 30, 1, 0)
+	arrow.Position = UDim2.new(1, -34, 0, 0)
+	arrow.BackgroundTransparency = 1
+	arrow.Text = "›"
+	arrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+	arrow.TextSize = 20
+	arrow.Font = Enum.Font.GothamBold
+	arrow.Rotation = 90
+	arrow.ZIndex = 3
+	arrow.Parent = top
+
+	local body = Instance.new("Frame")
+	body.Size = UDim2.new(1, 0, 1, -40)
+	body.Position = UDim2.new(0, 0, 0, 40)
+	body.BackgroundTransparency = 1
+	body.Parent = win
+
+	self.win = win
+	self.body = body
+
+	draggable(win, top)
+
+	local hit = Instance.new("TextButton")
+	hit.Size = UDim2.new(1, 0, 1, 0)
+	hit.BackgroundTransparency = 1
+	hit.Text = ""
+	hit.ZIndex = 4
+	hit.Parent = top
+
+	hit.MouseButton1Click:Connect(function()
+		self._open = not self._open
+		if self._open then
+			tw(win, {Size = UDim2.new(0, 200, 0, 40 + self._height)}, 0.25)
+			tw(arrow, {Rotation = 270}, 0.2)
+		else
+			tw(win, {Size = UDim2.new(0, 200, 0, 40)}, 0.25)
+			tw(arrow, {Rotation = 90}, 0.2)
+		end
+	end)
+
+	hit.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.Touch then
+			self._open = not self._open
+			if self._open then
+				tw(win, {Size = UDim2.new(0, 200, 0, 40 + self._height)}, 0.25)
+				tw(arrow, {Rotation = 270}, 0.2)
+			else
+				tw(win, {Size = UDim2.new(0, 200, 0, 40)}, 0.25)
+				tw(arrow, {Rotation = 90}, 0.2)
+			end
+		end
+	end)
+
+	return self
+end
+
+function lib:_sync()
+	self._height = self._y + 8
+	if self._open then
+		self.win.Size = UDim2.new(0, 200, 0, 40 + self._height)
+	end
+end
+
+function lib:Button(text, fn)
+	local y = self._y
+	self._y = self._y + 38
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -16, 0, 30)
+	btn.Position = UDim2.new(0, 8, 0, y)
+	btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	btn.BorderSizePixel = 0
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.TextSize = 13
+	btn.Font = Enum.Font.Gotham
+	btn.AutoButtonColor = false
+	btn.Parent = self.body
+
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+	local function press()
+		tw(btn, {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}, 0.08)
+		task.delay(0.15, function()
+			tw(btn, {BackgroundColor3 = Color3.fromRGB(25, 25, 25)}, 0.15)
+		end)
+		if fn then task.spawn(fn) end
+	end
+
+	btn.MouseButton1Click:Connect(press)
+	btn.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.Touch then press() end
+	end)
+
+	self:_sync()
+	return btn
+end
+
+function lib:Toggle(text, default, fn)
+	local y = self._y
+	self._y = self._y + 38
+	local state = default == true
+
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, -16, 0, 30)
+	row.Position = UDim2.new(0, 8, 0, y)
+	row.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	row.BorderSizePixel = 0
+	row.Parent = self.body
+
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -50, 1, 0)
+	lbl.Position = UDim2.new(0, 10, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = text
+	lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lbl.TextSize = 13
+	lbl.Font = Enum.Font.Gotham
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = row
+
+	local track = Instance.new("Frame")
+	track.Size = UDim2.new(0, 34, 0, 18)
+	track.Position = UDim2.new(1, -42, 0.5, -9)
+	track.BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(60, 60, 60)
+	track.BorderSizePixel = 0
+	track.Parent = row
+
+	Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+
+	local knob = Instance.new("Frame")
+	knob.Size = UDim2.new(0, 12, 0, 12)
+	knob.Position = state and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
+	knob.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	knob.BorderSizePixel = 0
+	knob.Parent = track
+
+	Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+	local hit = Instance.new("TextButton")
+	hit.Size = UDim2.new(1, 0, 1, 0)
+	hit.BackgroundTransparency = 1
+	hit.Text = ""
+	hit.Parent = row
+
+	local function toggle()
+		state = not state
+		tw(track, {BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(60, 60, 60)}, 0.18)
+		tw(knob, {Position = state and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)}, 0.18)
+		if fn then fn(state) end
+	end
+
+	hit.MouseButton1Click:Connect(toggle)
+	hit.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.Touch then toggle() end
+	end)
+
+	self:_sync()
+	return {
+		Set = function(v)
+			state = v
+			tw(track, {BackgroundColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(60, 60, 60)}, 0.18)
+			tw(knob, {Position = state and UDim2.new(1, -15, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)}, 0.18)
+		end,
+		Get = function() return state end
+	}
+end
+
+function lib:Slider(text, min, max, default, fn)
+	local y = self._y
+	self._y = self._y + 52
+	local val = math.clamp(default or min, min, max)
+
+	local wrap = Instance.new("Frame")
+	wrap.Size = UDim2.new(1, -16, 0, 44)
+	wrap.Position = UDim2.new(0, 8, 0, y)
+	wrap.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	wrap.BorderSizePixel = 0
+	wrap.Parent = self.body
+
+	Instance.new("UICorner", wrap).CornerRadius = UDim.new(0, 8)
+
+	local slbl = Instance.new("TextLabel")
+	slbl.Size = UDim2.new(0.6, 0, 0, 22)
+	slbl.Position = UDim2.new(0, 10, 0, 0)
+	slbl.BackgroundTransparency = 1
+	slbl.Text = text
+	slbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	slbl.TextSize = 12
+	slbl.Font = Enum.Font.Gotham
+	slbl.TextXAlignment = Enum.TextXAlignment.Left
+	slbl.Parent = wrap
+
+	local vlbl = Instance.new("TextLabel")
+	vlbl.Size = UDim2.new(0.4, -10, 0, 22)
+	vlbl.Position = UDim2.new(0.6, 0, 0, 0)
+	vlbl.BackgroundTransparency = 1
+	vlbl.Text = tostring(val)
+	vlbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	vlbl.TextSize = 12
+	vlbl.Font = Enum.Font.GothamBold
+	vlbl.TextXAlignment = Enum.TextXAlignment.Right
+	vlbl.Parent = wrap
+
+	local rail = Instance.new("Frame")
+	rail.Size = UDim2.new(1, -20, 0, 4)
+	rail.Position = UDim2.new(0, 10, 0, 30)
+	rail.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	rail.BorderSizePixel = 0
+	rail.Parent = wrap
+
+	Instance.new("UICorner", rail).CornerRadius = UDim.new(1, 0)
+
+	local pct = (val - min) / (max - min)
+
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.new(pct, 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	fill.BorderSizePixel = 0
+	fill.Parent = rail
+
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+	local dot = Instance.new("Frame")
+	dot.Size = UDim2.new(0, 13, 0, 13)
+	dot.Position = UDim2.new(pct, -6, 0.5, -6)
+	dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	dot.BorderSizePixel = 0
+	dot.Parent = rail
+
+	Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+
+	local sliding = false
+
+	local function apply(pos)
+		local rel = math.clamp((pos.X - rail.AbsolutePosition.X) / rail.AbsoluteSize.X, 0, 1)
+		val = math.floor(min + (max - min) * rel)
+		vlbl.Text = tostring(val)
+		fill.Size = UDim2.new(rel, 0, 1, 0)
+		dot.Position = UDim2.new(rel, -6, 0.5, -6)
+		if fn then fn(val) end
+	end
+
+	rail.InputBegan:Connect(function(i)
+		if isPress(i) then sliding = true apply(i.Position) end
+	end)
+
+	dot.InputBegan:Connect(function(i)
+		if isPress(i) then sliding = true end
+	end)
+
+	UserInputService.InputChanged:Connect(function(i)
+		if sliding and isMoved(i) then apply(i.Position) end
+	end)
+
+	UserInputService.InputEnded:Connect(function(i)
+		if isPress(i) then sliding = false end
+	end)
+
+	self:_sync()
+	return {
+		Set = function(v)
+			val = math.clamp(v, min, max)
+			local r = (val - min) / (max - min)
+			vlbl.Text = tostring(val)
+			fill.Size = UDim2.new(r, 0, 1, 0)
+			dot.Position = UDim2.new(r, -6, 0.5, -6)
+		end,
+		Get = function() return val end
+	}
+end
+
+function lib:Label(text)
+	local y = self._y
+	self._y = self._y + 24
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -16, 0, 16)
+	lbl.Position = UDim2.new(0, 8, 0, y)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = text
+	lbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+	lbl.TextSize = 11
+	lbl.Font = Enum.Font.Gotham
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = self.body
+
+	self:_sync()
+	return lbl
+end
+
+function lib:Separator()
+	local y = self._y
+	self._y = self._y + 16
+
+	local sep = Instance.new("Frame")
+	sep.Size = UDim2.new(1, -24, 0, 1)
+	sep.Position = UDim2.new(0, 12, 0, y + 7)
+	sep.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	sep.BorderSizePixel = 0
+	sep.Parent = self.body
+
+	self:_sync()
+end
+
+return lib
